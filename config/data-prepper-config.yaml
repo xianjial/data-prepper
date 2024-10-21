@@ -1,0 +1,14 @@
+ssl: false
+metricRegistries:
+  - CloudWatch
+source_coordination:
+  partition_prefix: "neptune-36"
+  store:
+    dynamodb:
+      table_name: "DataPrepperSourceCoordinationStore"
+      region: "us-east-1"
+      sts_role_arn: "arn:aws:iam::160718075058:role/OSPipelineRole"
+      ttl: "P7D"
+      skip_table_creation: true
+peer_forwarder:
+  ssl: false
