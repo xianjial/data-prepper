@@ -20,8 +20,8 @@ void remove(def object, def key, def value){
   }
 }
 
-if (ctx._source["predicates"] == null){ ctx._source["predicates"] = new HashMap()}
-if (ctx._source["entity_type"] == null){ ctx._source["entity_type"] = new ArrayList()}
+if (ctx._source["predicates"] == null){ ctx._source["predicates"] = new HashMap();}
+if (ctx._source["entity_type"] == null){ ctx._source["entity_type"] = new ArrayList();}
 
 // Handle predicate addition
 for (predicate in params.params.predicates_to_add) {
@@ -36,7 +36,7 @@ for (predicate in params.params.predicates_to_delete) {
 // Handle entity_type addition
 for (_type in params.params.entity_types_to_add) {
     int elmIdx = ctx._source.entity_type.indexOf(_type);
-    if (elmIdx != -1) {
+    if (elmIdx == -1) {
         ctx._source.entity_type.add(_type);
     }
 }
