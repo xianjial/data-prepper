@@ -14,6 +14,18 @@ public class OpenSearchDocument {
     public static final String VERTEX_ID_PREFIX = "v://";
     public static final String EDGE_ID_PREFIX = "e://";
 
+    // The operation for the entity (ADD, UPDATE etc.)
+    @JsonProperty("op")
+    private String op;
+
+    // The commit number to the database
+    @JsonProperty("commit_num")
+    private Long commitNum;
+
+    // The operation number of the commit
+    @JsonProperty("op_num")
+    private Long opNum;
+
     // Reference to Neptune entity corresponding to document. For Gremlin, it will be Vertex Id for Vertex document &
     // Edge ID for Edge Document. For Sparql, it will be RDF subject URI
     @JsonProperty("entity_id")

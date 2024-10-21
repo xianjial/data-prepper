@@ -109,6 +109,9 @@ public class NeptuneStreamRecord<T extends ToCopyableBuilder> {
         }
         return OpenSearchDocument
                 .builder()
+                .op(this.getOp())
+                .commitNum(this.getCommitNum())
+                .opNum(this.getOpNum())
                 .entityId(stmt.getSubject().stringValue())
                 .documentType("rdf-resource")
                 .entityType(entityType)
@@ -147,6 +150,9 @@ public class NeptuneStreamRecord<T extends ToCopyableBuilder> {
 
         return OpenSearchDocument
                 .builder()
+                .op(this.getOp())
+                .commitNum(this.getCommitNum())
+                .opNum(this.getOpNum())
                 .entityId(getEntityIdForPropertyGraph(propertygraphData.type(), propertygraphData.id()))
                 .documentType(getDocumentTypeForPropertyGraph(propertygraphData.type()))
                 .entityType(entityType)

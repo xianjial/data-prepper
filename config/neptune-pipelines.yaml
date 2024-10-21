@@ -19,10 +19,10 @@ neptune-pipeline:
       streamType: "propertygraph"
   processor:
     - aggregate:
-        identification_keys: [ "entity_id", "document_type" ]
+        identification_keys: [ "entity_id" ]
         group_duration: "15s"
         action:
-          put_all:
+          neptune_aggregate:
   sink:
     - opensearch:
         hosts:
