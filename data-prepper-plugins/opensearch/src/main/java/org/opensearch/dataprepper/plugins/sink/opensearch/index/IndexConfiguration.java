@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.io.Files;
 import org.apache.commons.lang3.EnumUtils;
 import org.opensearch.client.opensearch._types.VersionType;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
@@ -26,6 +27,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -65,6 +67,7 @@ public class IndexConfiguration {
     public static final long DEFAULT_FLUSH_TIMEOUT = 60_000L;
     public static final String ACTION = "action";
     public static final String ACTIONS = "actions";
+    public static final String SCRIPTS = "scripts";
     public static final String S3_AWS_REGION = "s3_aws_region";
     public static final String S3_AWS_STS_ROLE_ARN = "s3_aws_sts_role_arn";
     public static final String S3_AWS_STS_EXTERNAL_ID = "s3_aws_sts_external_id";
@@ -92,6 +95,7 @@ public class IndexConfiguration {
     private final Optional<String> ismPolicyFile;
     private final String action;
     private final List<Map<String, Object>> actions;
+    private final Map<String, String> scripts;
     private final String s3AwsRegion;
     private final String s3AwsStsRoleArn;
     private final String s3AwsExternalId;
@@ -163,6 +167,7 @@ public class IndexConfiguration {
         this.ismPolicyFile = builder.ismPolicyFile;
         this.action = builder.action;
         this.actions = builder.actions;
+        this.scripts = builder.scripts;
         this.documentRootKey = builder.documentRootKey;
     }
 
@@ -286,6 +291,11 @@ public class IndexConfiguration {
             builder.withAction(pluginSetting.getStringOrDefault(ACTION, OpenSearchBulkActions.INDEX.toString()), expressionEvaluator);
         }
 
+        final Map<String, String> scripts = pluginSetting.getTypedMap(SCRIPTS, String.class, String.class);
+        if (scripts != null) {
+            builder = builder.withScripts(scripts, expressionEvaluator);
+        }
+
         if ((builder.templateFile != null && builder.templateFile.startsWith(S3_PREFIX))
             || (builder.ismPolicyFile.isPresent() && builder.ismPolicyFile.get().startsWith(S3_PREFIX))) {
             builder.withS3AwsRegion(pluginSetting.getStringOrDefault(S3_AWS_REGION, DEFAULT_AWS_REGION));
@@ -375,6 +385,10 @@ public class IndexConfiguration {
 
     public List<Map<String, Object>> getActions() {
         return actions;
+    }
+
+    public Map<String, String> getScripts() {
+        return scripts;
     }
 
     public String getS3AwsRegion() {
@@ -482,6 +496,7 @@ public class IndexConfiguration {
         private Optional<String> ismPolicyFile;
         private String action;
         private List<Map<String, Object>> actions;
+        private Map<String, String> scripts;
         private String s3AwsRegion;
         private String s3AwsStsRoleArn;
         private String s3AwsStsExternalId;
@@ -604,6 +619,29 @@ public class IndexConfiguration {
                 }
             }
             this.actions = actions;
+            return this;
+        }
+
+        public Builder withScripts(final Map<String, String> scripts, final ExpressionEvaluator expressionEvaluator) {
+            final Map<String, String> evaluatedScriptMap = new HashMap<>();
+            InputStream s3ScriptURL;
+            String inlineScript;
+            for (Map.Entry<String, String> scriptMap : scripts.entrySet()) {
+                final String scriptFile = scriptMap.getValue();
+                try {
+                    if (scriptFile.toLowerCase().startsWith(S3_PREFIX)) {
+                        FileReader s3FileReader = new S3FileReader(s3Client);
+                        s3ScriptURL = s3FileReader.readFile(scriptFile);
+                        inlineScript = new String(s3ScriptURL.readAllBytes(), StandardCharsets.UTF_8);
+                    } else {
+                        inlineScript = Files.asCharSource(new File(scriptFile), StandardCharsets.UTF_8).read();
+                    }
+                } catch (final IOException e) {
+                    throw new IllegalArgumentException("Could not read script file: " + scriptFile, e);
+                }
+                evaluatedScriptMap.put(scriptMap.getKey(), inlineScript);
+            }
+            this.scripts = evaluatedScriptMap;
             return this;
         }
 

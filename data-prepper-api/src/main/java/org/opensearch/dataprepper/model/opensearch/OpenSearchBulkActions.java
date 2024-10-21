@@ -17,6 +17,7 @@ public enum OpenSearchBulkActions {
     UPSERT("upsert"),
     UPDATE("update"),
     DELETE("delete"),
+    SCRIPTED_UPDATE("scripted_update"),
     INDEX("index");
 
     private static final Map<String, OpenSearchBulkActions> ACTIONS_MAP = Arrays.stream(OpenSearchBulkActions.values())

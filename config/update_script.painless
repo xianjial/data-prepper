@@ -1,0 +1,62 @@
+// adds value to obj[key] only if it doesn't exist (i.e Set semantics)
+void add(def object, def key, def value){
+  if (object[key] != null) {
+    if(!object[key].contains(value)) {
+        object[key].add(value)
+    }
+  }else {
+    object[key] = [value]
+  }
+}
+
+// remove value from obj[key] iff it already existed
+// and deletes the whole key if len(obj[key]) = 0
+void remove(def object, def key, def value){
+  if (object[key] != null) {
+      object[key].removeIf(x -> x.equals(value));
+      if (object[key].length == 0){
+        object.remove(key)
+      }
+  }
+}
+
+if (ctx._source["predicates"] == null){ ctx._source["predicates"] = new HashMap()}
+if (ctx._source["entity_type"] == null){ ctx._source["entity_type"] = new ArrayList()}
+
+// Handle predicate addition
+for (predicate in params.params.predicates_to_add) {
+    add(ctx._source.predicates, predicate["key"], predicate["value"])
+}
+
+// Handle predicate deletion
+for (predicate in params.params.predicates_to_delete) {
+    remove(ctx._source.predicates, predicate["key"], predicate["value"])
+}
+
+// Handle entity_type addition
+for (_type in params.params.entity_types_to_add) {
+    int elmIdx = ctx._source.entity_type.indexOf(_type);
+    if (elmIdx != -1) {
+        ctx._source.entity_type.add(_type);
+    }
+}
+
+// Handle entity_type deletion
+for (_type in params.params.entity_types_to_delete) {
+    int elmIdx = ctx._source.entity_type.indexOf(_type);
+    if (elmIdx != -1) {
+        ctx._source.entity_type.remove(elmIdx);
+    }
+}
+
+// Delete the document if it is empty
+
+if (ctx._source["predicates"] != null && ctx._source.predicates.size() == 0){
+   ctx._source.remove("predicates");
+}
+if (ctx._source["entity_type"] != null && ctx._source.entity_type.size() == 0){
+   ctx._source.remove("entity_type");
+}
+
+// entity_id, document_type
+if(ctx._source.size() == 2){ ctx.op = "delete" }

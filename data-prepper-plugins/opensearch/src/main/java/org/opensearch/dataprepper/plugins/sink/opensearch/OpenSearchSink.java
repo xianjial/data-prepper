@@ -12,9 +12,14 @@ import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
 import org.apache.commons.lang3.StringUtils;
 import org.opensearch.client.RestHighLevelClient;
+import org.opensearch.client.json.JsonData;
 import org.opensearch.client.opensearch.OpenSearchClient;
+import org.opensearch.client.opensearch._types.Script;
+import org.opensearch.client.opensearch._types.StoredScript;
+import org.opensearch.client.opensearch._types.StoredScriptId;
 import org.opensearch.client.opensearch._types.VersionType;
 import org.opensearch.client.opensearch.core.BulkRequest;
+import org.opensearch.client.opensearch.core.PutScriptRequest;
 import org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import org.opensearch.client.opensearch.core.bulk.CreateOperation;
 import org.opensearch.client.opensearch.core.bulk.DeleteOperation;
@@ -280,8 +285,27 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
             bulkRequestSupplier,
             pluginSetting);
 
+    this.initializeScripts();
     this.initialized = true;
     LOG.info("Initialized OpenSearch sink");
+  }
+
+  /**
+   * Initialize and create stored scripts.
+   */
+  private void initializeScripts()  {
+    final Map<String, String> scripts = openSearchSinkConfig.getIndexConfiguration().getScripts();
+    for (Map.Entry<String, String> script : scripts.entrySet()) {
+        try {
+             openSearchClient.putScript(new PutScriptRequest
+                    .Builder()
+                    .id(script.getKey())
+                    .script(new StoredScript.Builder().source(script.getValue()).lang("painless").build())
+                    .build());
+        } catch (final IOException e) {
+            throw new IllegalStateException("Failed to create script: " + e.getMessage(), e);
+        }
+    }
   }
 
   double getInvalidActionErrorsCount() {
@@ -318,6 +342,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
        return bulkOperation;
     }
     if (StringUtils.equals(action, OpenSearchBulkActions.UPDATE.toString()) ||
+        StringUtils.equals(action, OpenSearchBulkActions.SCRIPTED_UPDATE.toString()) ||
         StringUtils.equals(action, OpenSearchBulkActions.UPSERT.toString())) {
 
         JsonNode filteredJsonNode = jsonNode;
@@ -330,22 +355,33 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
                   String.format("An exception occurred while deserializing a document for the %s action: %s", action, e.getMessage()));
         }
 
-
-          final UpdateOperation.Builder<Object> updateOperationBuilder = (StringUtils.equals(action.toLowerCase(), OpenSearchBulkActions.UPSERT.toString())) ?
-              new UpdateOperation.Builder<>()
+      final UpdateOperation.Builder<Object> updateOperationBuilder;
+      if (StringUtils.equals(action.toLowerCase(), OpenSearchBulkActions.SCRIPTED_UPDATE.toString())) {
+          updateOperationBuilder = new UpdateOperation.Builder<>()
                   .index(indexName)
-                  .document(filteredJsonNode)
+                  .script(new Script.Builder().stored(new StoredScriptId.Builder().id("update_script").params("params", JsonData.of(jsonNode)).build()).build())
+                  .scriptedUpsert(true)
                   .upsert(filteredJsonNode)
                   .versionType(versionType)
-                  .version(version) :
-              new UpdateOperation.Builder<>()
-                  .index(indexName)
-                  .document(filteredJsonNode)
-                  .versionType(versionType)
                   .version(version);
-          docId.ifPresent(updateOperationBuilder::id);
-          routing.ifPresent(updateOperationBuilder::routing);
-          bulkOperation = new BulkOperation.Builder()
+        } else {
+          updateOperationBuilder = (StringUtils.equals(action.toLowerCase(), OpenSearchBulkActions.UPSERT.toString())) ?
+                  new UpdateOperation.Builder<>()
+                          .index(indexName)
+                          .document(filteredJsonNode)
+                          .upsert(filteredJsonNode)
+                          .versionType(versionType)
+                          .version(version) :
+                  new UpdateOperation.Builder<>()
+                          .index(indexName)
+                          .document(filteredJsonNode)
+                          .versionType(versionType)
+                          .version(version);
+        }
+
+        docId.ifPresent(updateOperationBuilder::id);
+        routing.ifPresent(updateOperationBuilder::routing);
+        bulkOperation = new BulkOperation.Builder()
                               .update(updateOperationBuilder.build())
                               .build();
           return bulkOperation;
