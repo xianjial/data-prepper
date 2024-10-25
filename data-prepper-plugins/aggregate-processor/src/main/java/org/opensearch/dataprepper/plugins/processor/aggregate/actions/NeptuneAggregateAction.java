@@ -11,6 +11,8 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.plugins.processor.aggregate.*;
+import org.opensearch.dataprepper.plugins.source.neptune.converter.OpenSearchDocument;
+import org.opensearch.dataprepper.plugins.source.neptune.converter.OpenSearchDocumentPredicate;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -54,23 +56,21 @@ public class NeptuneAggregateAction implements AggregateAction {
         // Retrieve the group state
         final GroupState groupState = aggregateActionInput.getGroupState();
 
-        // Get the important data from the event
-        final Integer commitNum = event.get("commit_num", Number.class).intValue();
-        final Integer opNum = event.get("op_num", Number.class).intValue();
+        OpenSearchDocument parsedEvent = OpenSearchDocument.fromEvent(event);
 
         // If not exists, set the "events" key with a TreeMap
         groupState.putIfAbsent(GROUP_KEY_EVENTS, new TreeMap<>());
-        final TreeMap<Integer, TreeMap<Integer, NeptuneEventSimple>> eventsMap = (TreeMap<Integer, TreeMap<Integer, NeptuneEventSimple>>) groupState.get(GROUP_KEY_EVENTS);
+        final TreeMap<Long, TreeMap<Long, OpenSearchDocument>> eventsMap = (TreeMap<Long, TreeMap<Long, OpenSearchDocument>>) groupState.get(GROUP_KEY_EVENTS);
         assert eventsMap != null;
 
         // If not exists, set the commit with a TreeMap
-        eventsMap.putIfAbsent(commitNum, new TreeMap<>());
-        final TreeMap<Integer, NeptuneEventSimple> commitGroup = (TreeMap<Integer, NeptuneEventSimple>) groupState.get(commitNum);
+        eventsMap.putIfAbsent(parsedEvent.getCommitNum(), new TreeMap<>());
+        final TreeMap<Long, OpenSearchDocument> commitGroup = eventsMap.get(parsedEvent.getCommitNum());
         assert commitGroup != null;
 
-        // If not exists, set the op as NeptuneEventSimple
-        commitGroup.putIfAbsent(opNum, new NeptuneEventSimple(event));
-        NeptuneEventSimple currentOp = commitGroup.get(opNum);
+        // If not exists, set the op as OpenSearchDocument
+        commitGroup.putIfAbsent(parsedEvent.getOpNum(), parsedEvent);
+        OpenSearchDocument currentOp = commitGroup.get(parsedEvent.getOpNum());
         assert currentOp != null;
 
         return AggregateActionResponse.nullEventResponse();
@@ -98,7 +98,10 @@ public class NeptuneAggregateAction implements AggregateAction {
     @Override
     public AggregateActionOutput concludeGroup(final AggregateActionInput aggregateActionInput) {
         GroupState groupState = aggregateActionInput.getGroupState();
-        final List<Event> events = getAggregatedEvents(groupState);
+
+        final TreeMap<Long, TreeMap<Long, OpenSearchDocument>> eventsMap = (TreeMap<Long, TreeMap<Long, OpenSearchDocument>>) groupState.get(GROUP_KEY_EVENTS);
+
+        final List<Event> events = getAggregatedEvents(eventsMap);
 
         return new AggregateActionOutput(events);
     }
@@ -106,9 +109,9 @@ public class NeptuneAggregateAction implements AggregateAction {
     /**
      * Asserts the sequence of a set
      */
-    private void assertSequence(List<Integer> intList) {
-        for (int i = 0; i < intList.size() - 1; i++) {
-            int diff = intList.get(i + 1) - intList.get(i);
+    private void assertSequence(List<Long> sequenceList) {
+        for (int i = 0; i < sequenceList.size() - 1; i++) {
+            long diff = sequenceList.get(i + 1) - sequenceList.get(i);
             assert diff == 1;
         }
     }
@@ -116,30 +119,28 @@ public class NeptuneAggregateAction implements AggregateAction {
     /**
      * Retrieves the aggregated events. Used for the conclude action
      */
-    private List<Event> getAggregatedEvents(GroupState groupState) {
+    private List<Event> getAggregatedEvents(TreeMap<Long, TreeMap<Long, OpenSearchDocument>> eventsMap) {
         final ArrayList<NeptuneEventAggregated> events = new ArrayList<>();
-
-        final TreeMap<Integer, TreeMap<Integer, NeptuneEventSimple>> eventsMap = (TreeMap<Integer, TreeMap<Integer, NeptuneEventSimple>>) groupState.get(GROUP_KEY_EVENTS);
 
         assertSequence(new ArrayList<>(eventsMap.keySet()));
 
-        for (Map.Entry<Integer, TreeMap<Integer, NeptuneEventSimple>> commitSet : eventsMap.entrySet()) {
+        for (Map.Entry<Long, TreeMap<Long, OpenSearchDocument>> commitSet : eventsMap.entrySet()) {
 
             assertSequence(new ArrayList<>(commitSet.getValue().keySet()));
 
             // We do this as a sub list to keep commits grouped and restricted
             final LinkedHashMap<String, NeptuneEventAggregated> commitEvents = new LinkedHashMap<>();
 
-            for (Map.Entry<Integer, NeptuneEventSimple> opSet : commitSet.getValue().entrySet()) {
-                NeptuneEventSimple op = opSet.getValue();
+            for (Map.Entry<Long, OpenSearchDocument> opSet : commitSet.getValue().entrySet()) {
+                OpenSearchDocument op = opSet.getValue();
 
-                NeptuneEventAggregated event = commitEvents.get(op.entityId);
+                NeptuneEventAggregated event = commitEvents.get(op.getEntityId());
                 if (event == null) {
-                    event = new NeptuneEventAggregated(op.entityId);
-                    commitEvents.put(op.entityId, event);
+                    event = new NeptuneEventAggregated(op.getEntityId());
+                    commitEvents.put(op.getEntityId(), event);
                 }
 
-                event.consumeNeptuneEventSimple(op);
+                event.consumeOpenSearchDocument(op);
             }
 
             events.addAll(commitEvents.values());
@@ -165,29 +166,41 @@ class NeptuneEventAggregated {
     public final String entityId;
     public final HashSet<String> entityTypesToAdd = new HashSet<>();
     public final HashSet<String> entityTypesToDelete = new HashSet<>();
-    public final ArrayList<HashMap<String, Object>> predicatesToAdd = new ArrayList<>();
-    public final ArrayList<HashMap<String, Object>> predicatesToDelete = new ArrayList<>();
+    public final List<HashMap<String, Object>> predicatesToAdd = new ArrayList<>();
+    public final List<HashMap<String, Object>> predicatesToDelete = new ArrayList<>();
 
     public NeptuneEventAggregated(String entityId) {
         this.entityId = entityId;
     }
 
-    public void consumeNeptuneEventSimple(NeptuneEventSimple event) {
-        if (!event.entityType.isEmpty()) {
-            if (event.op.equals(OP_TYPE_ADD)) {
-                this.entityTypesToAdd.addAll(event.entityType);
+    private ArrayList<HashMap<String, Object>> parsePredicates(Map<String, Set<OpenSearchDocumentPredicate>> predicates) {
+        ArrayList<HashMap<String, Object>> parsedPredicates = new ArrayList<>();
 
-            } else if (event.op.equals(OP_TYPE_DELETE)) {
-                this.entityTypesToDelete.addAll(event.entityType);
+        for (Map.Entry<String, Set<OpenSearchDocumentPredicate>> predicate : predicates.entrySet()) {
+            HashMap<String, Object> map = new HashMap();
+            map.put("key", predicate.getKey());
+            map.put("value", predicate.getValue());
+            parsedPredicates.add(map);
+        }
+        return parsedPredicates;
+    }
+
+    public void consumeOpenSearchDocument(OpenSearchDocument doc) {
+        if (!doc.getEntityType().isEmpty()) {
+            if (doc.getOp().equals(OP_TYPE_ADD)) {
+                this.entityTypesToAdd.addAll(doc.getEntityType());
+
+            } else if (doc.getOp().equals(OP_TYPE_DELETE)) {
+                this.entityTypesToDelete.addAll(doc.getEntityType());
             }
         }
 
-        if (!event.predicates.isEmpty()) {
-            if (event.op.equals(OP_TYPE_ADD)) {
-                this.predicatesToAdd.add(event.predicates);
+        if (!doc.getPredicates().isEmpty()) {
+            if (doc.getOp().equals(OP_TYPE_ADD)) {
+                this.predicatesToAdd.addAll(parsePredicates(doc.getPredicates()));
 
-            } else if (event.op.equals(OP_TYPE_DELETE)) {
-                this.predicatesToDelete.add(event.predicates);
+            } else if (doc.getOp().equals(OP_TYPE_DELETE)) {
+                this.predicatesToDelete.addAll(parsePredicates(doc.getPredicates()));
             }
         }
     }
@@ -206,27 +219,5 @@ class NeptuneEventAggregated {
                         Map.entry(EVENT_KEY_PREDICATES_TO_DELETE, this.predicatesToDelete)
                 ))
                 .build();
-    }
-}
-
-/**
- * Internal simplified class for Neptune events
- */
-class NeptuneEventSimple {
-    static final String EVENT_KEY_OP = "op";
-    static final String EVENT_KEY_ENTITY_ID = "entity_id";
-    static final String EVENT_KEY_ENTITY_TYPE = "entity_type";
-    static final String EVENT_KEY_PREDICATES = "predicates";
-
-    public final String op;
-    public final String entityId;
-    public final ArrayList<String> entityType;
-    public final HashMap<String, Object> predicates;
-
-    public NeptuneEventSimple(Event event) {
-        this.op = event.get(EVENT_KEY_OP, String.class);
-        this.entityId = event.get(EVENT_KEY_ENTITY_ID, String.class);
-        this.entityType = event.get(EVENT_KEY_ENTITY_TYPE, ArrayList.class);
-        this.predicates = event.get(EVENT_KEY_PREDICATES, HashMap.class);
     }
 }

@@ -3,9 +3,9 @@ package org.opensearch.dataprepper.plugins.source.neptune.converter;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Getter;
+import org.opensearch.dataprepper.model.event.Event;
 
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 @Builder
 @Getter
@@ -80,5 +80,72 @@ public class OpenSearchDocument {
             final Set<OpenSearchDocumentPredicate> currPredicateValue = this.getPredicates().get(otherPredicates.getKey());
             currPredicateValue.addAll(otherPredicates.getValue());
         }
+    }
+
+    public static OpenSearchDocument fromEvent(Event event) {
+        final String op = event.get("op", String.class);
+        final Long commitNum = event.get("commit_num", Long.class);
+        final Long opNum = event.get("op_num", Long.class);
+        final String entityId = event.get("entity_id", String.class);
+        final Set<String> entityType = event.get("entity_type", Set.class);
+        final String documentType = event.get("document_type", String.class);
+
+        final HashMap<String, Object> predicatesRaw = event.get("predicates", HashMap.class);
+        final Map<String, Set<OpenSearchDocumentPredicate>> predicates = new HashMap<>();
+
+        for (Map.Entry<String, Object> entry : predicatesRaw.entrySet()) {
+            predicates.putIfAbsent(entry.getKey(), new HashSet<>());
+            predicates.get(entry.getKey()).add(OpenSearchDocumentPredicate
+                    .builder()
+                    .value((String) predicatesRaw.get("value"))
+                    .graph((String) predicatesRaw.get("graph"))
+                    .language((String) predicatesRaw.get("language"))
+                    .build());
+        }
+
+        return OpenSearchDocument.builder()
+                .op(op)
+                .commitNum(commitNum)
+                .opNum(opNum)
+                .entityId(entityId)
+                .entityType(entityType)
+                .documentType(documentType)
+                .predicates(predicates)
+                .build();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        OpenSearchDocument that = (OpenSearchDocument) o;
+        if (!(Objects.equals(op, that.op) && Objects.equals(commitNum, that.commitNum) && Objects.equals(opNum, that.opNum) && Objects.equals(entityId, that.entityId) && Objects.equals(entityType, that.entityType) && Objects.equals(documentType, that.documentType))) {
+            return false;
+        }
+
+        for (Map.Entry<String, Set<OpenSearchDocumentPredicate>> expectedPredicates : this.getPredicates().entrySet()) {
+            Set<OpenSearchDocumentPredicate> actualPredicates = that.getPredicates().get(expectedPredicates.getKey());
+
+            if (actualPredicates == null) return false;
+
+            List<OpenSearchDocumentPredicate> expectedPredicateList = new ArrayList<>(expectedPredicates.getValue());
+            List<OpenSearchDocumentPredicate> actualPredicateList = new ArrayList<>(actualPredicates);
+
+            if (expectedPredicateList.size() != actualPredicateList.size()) return false;
+
+            for (int i = 0; i < expectedPredicateList.size(); i++) {
+                OpenSearchDocumentPredicate expectedPredicate = expectedPredicateList.get(i);
+                OpenSearchDocumentPredicate actualPredicate = actualPredicateList.get(i);
+
+                if (!(expectedPredicate.equals(actualPredicate))) return false;
+            }
+        }
+
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(op, commitNum, opNum, entityId, entityType, documentType, predicates);
     }
 }
