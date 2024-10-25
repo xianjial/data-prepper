@@ -34,7 +34,7 @@ public class OpenSearchDocumentPredicate {
         return Objects.hash(value, graph, language);
     }
 
-    public static OpenSearchDocumentPredicate fromPropertGraphData(final PropertygraphData propertygraphData) {
+    public static OpenSearchDocumentPredicate fromPropertyGraphData(final PropertygraphData propertygraphData) {
         final String value = propertygraphData.value().asMap().get("value").asString();
         return OpenSearchDocumentPredicate
                 .builder()
