@@ -14,11 +14,15 @@ dependencies {
     implementation project(':data-prepper-expression')
     implementation project(':data-prepper-plugins:otel-proto-common')
     implementation project(':data-prepper-plugins:otel-metrics-raw-processor')
+    implementation project(':data-prepper-plugins:neptune-source')
     implementation libs.guava.core
     implementation libs.commons.lang3
     implementation libs.opentelemetry.proto
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'io.micrometer:micrometer-core'
+
+    compileOnly 'org.projectlombok:lombok:1.18.22'
+    annotationProcessor 'org.projectlombok:lombok:1.18.22'
 }
 
 jacocoTestCoverageVerification {
