@@ -120,7 +120,7 @@ public class NeptuneAggregateAction implements AggregateAction {
      * Retrieves the aggregated events. Used for the conclude action
      */
     private List<Event> getAggregatedEvents(TreeMap<Long, TreeMap<Long, OpenSearchDocument>> eventsMap) {
-        final ArrayList<NeptuneEventAggregated> events = new ArrayList<>();
+        final HashMap<String,NeptuneEventAggregated> events = new HashMap<>();
 
         assertSequence(new ArrayList<>(eventsMap.keySet()));
 
@@ -128,25 +128,20 @@ public class NeptuneAggregateAction implements AggregateAction {
 
             assertSequence(new ArrayList<>(commitSet.getValue().keySet()));
 
-            // We do this as a sub list to keep commits grouped and restricted
-            final LinkedHashMap<String, NeptuneEventAggregated> commitEvents = new LinkedHashMap<>();
-
             for (Map.Entry<Long, OpenSearchDocument> opSet : commitSet.getValue().entrySet()) {
                 OpenSearchDocument op = opSet.getValue();
 
-                NeptuneEventAggregated event = commitEvents.get(op.getEntityId());
+                NeptuneEventAggregated event = events.get(op.getEntityId());
                 if (event == null) {
                     event = new NeptuneEventAggregated(op.getEntityId());
-                    commitEvents.put(op.getEntityId(), event);
+                    events.put(op.getEntityId(), event);
                 }
 
                 event.consumeOpenSearchDocument(op);
             }
-
-            events.addAll(commitEvents.values());
         }
 
-        return events.stream().map(NeptuneEventAggregated::toEvent).collect(Collectors.toList());
+        return events.values().stream().map(NeptuneEventAggregated::toEvent).collect(Collectors.toList());
     }
 }
 

@@ -25,6 +25,7 @@ public class NeptuneAggregateActionTest {
     private Event neptuneStreamEvent1;
     private Event neptuneStreamEvent2;
     private Event neptuneStreamEvent3;
+    private Event neptuneStreamEvent4;
     private GroupState expectedGroupState;
 
     @BeforeEach
@@ -72,6 +73,20 @@ public class NeptuneAggregateActionTest {
                         .build())
                 .build();
 
+        neptuneStreamEvent4 = JacksonEvent.builder()
+                .withEventType("event")
+                .withData(OpenSearchDocument
+                        .builder()
+                        .op("DELETE")
+                        .commitNum(2L)
+                        .opNum(1L)
+                        .entityId("v://22c94d6b-f537-62f6-6407-f85fd4b59629")
+                        .documentType("vertex")
+                        .entityType(Set.of("Place"))
+                        .predicates(Map.of("name", Set.of(OpenSearchDocumentPredicate.builder().value("eu").graph("g1").language("en").build())))
+                        .build())
+                .build();
+
         expectedGroupState = new AggregateActionTestUtils.TestGroupState();
     }
 
@@ -114,19 +129,20 @@ public class NeptuneAggregateActionTest {
     }
 
     @Test
-    void concludeGroup_with_two_add_and_one_delete() throws JsonProcessingException {
+    void concludeGroup_with_two_add_and_two_delete() throws JsonProcessingException {
         neptuneAggregateAction = createObjectUnderTest();
         final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(Collections.emptyMap());
         final GroupState groupState = aggregateActionInput.getGroupState();
 
         ObjectMapper objectMapper = new ObjectMapper();
-        final List<JsonNode> expectedEvents = List.of(objectMapper.readTree("{\"predicates_to_delete\":[{\"value\":[{\"value\":null,\"graph\":null,\"language\":null}],\"key\":\"name\"}],\"entity_types_to_delete\":[\"Person\"],\"entity_id\":\"v://22c94d6b-f537-62f6-6407-f85fd4b59629\",\"predicates_to_add\":[{\"value\":[{\"value\":null,\"graph\":null,\"language\":null}],\"key\":\"name\"},{\"value\":[{\"value\":null,\"graph\":null,\"language\":null}],\"key\":\"name\"}],\"entity_types_to_add\":[\"Person\"]}"));
+        final List<JsonNode> expectedEvents = List.of(objectMapper.readTree("{\"entity_id\":\"v://22c94d6b-f537-62f6-6407-f85fd4b59629\",\"predicates_to_add\":[{\"value\":[{\"value\":null,\"graph\":null,\"language\":null}],\"key\":\"name\"},{\"value\":[{\"value\":null,\"graph\":null,\"language\":null}],\"key\":\"name\"}],\"entity_types_to_add\":[\"Person\"],\"predicates_to_delete\":[{\"value\":[{\"value\":null,\"graph\":null,\"language\":null}],\"key\":\"name\"},{\"value\":[{\"value\":null,\"graph\":null,\"language\":null}],\"key\":\"name\"}],\"entity_types_to_delete\":[\"Person\",\"Place\"]}"));
 
         final TreeMap<Long, TreeMap<Long, OpenSearchDocument>> inputEvents = new TreeMap<>(
                 Map.of(1L, new TreeMap<>(Map.of(
                         1L, OpenSearchDocument.fromEvent(neptuneStreamEvent1),
                         2L, OpenSearchDocument.fromEvent(neptuneStreamEvent2),
-                        3L, OpenSearchDocument.fromEvent(neptuneStreamEvent3)
+                        3L, OpenSearchDocument.fromEvent(neptuneStreamEvent3),
+                        4L, OpenSearchDocument.fromEvent(neptuneStreamEvent4)
                 )))
         );
 
