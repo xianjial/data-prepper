@@ -19,3 +19,4 @@ data-prepper-main/src/test/resources/logstash-conf/logstash-filter.yaml
 
 # output folder created when we run test cases
 **/out/
+config/*.yaml
