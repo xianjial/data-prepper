@@ -1,11 +1,15 @@
 package org.opensearch.dataprepper.plugins.source.neptune.coordination.partition;
 
+import lombok.Getter;
+import lombok.Setter;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.neptune.coordination.state.DataQueryProgressState;
 
 import java.util.Optional;
 
+@Setter
+@Getter
 public class DataQueryPartition extends EnhancedSourcePartition<DataQueryProgressState> {
     public static final String PARTITION_TYPE = "DATA_QUERY";
 
@@ -19,12 +23,6 @@ public class DataQueryPartition extends EnhancedSourcePartition<DataQueryProgres
         query = sourcePartitionStoreItem.getSourcePartitionKey();
         this.state = convertStringToPartitionProgressState(DataQueryProgressState.class, sourcePartitionStoreItem.getPartitionProgressState());
 
-    }
-
-    public DataQueryPartition(final String query, final DataQueryProgressState state) {
-        this.collection = getCollection(query);
-        this.query = query;
-        this.state = state;
     }
 
     private String getCollection(final String partitionKey) {
@@ -48,13 +46,5 @@ public class DataQueryPartition extends EnhancedSourcePartition<DataQueryProgres
             return Optional.of(state);
         }
         return Optional.empty();
-    }
-
-    public String getCollection() {
-        return collection;
-    }
-
-    public String getQuery() {
-        return query;
     }
 }

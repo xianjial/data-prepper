@@ -42,7 +42,7 @@ public class StreamAcknowledgementManager {
         this.partitionAcknowledgmentTimeout = partitionAcknowledgmentTimeout;
         this.acknowledgementMonitorWaitTimeInMs = acknowledgementMonitorWaitTimeInMs;
         this.checkPointIntervalInMs = checkPointIntervalInMs;
-        executorService = Executors.newSingleThreadExecutor(BackgroundThreadFactory.defaultExecutorThreadFactory("mongodb-stream-ack-monitor"));
+        executorService = Executors.newSingleThreadExecutor(BackgroundThreadFactory.defaultExecutorThreadFactory("neptunedb-stream-ack-monitor"));
     }
 
     void init(final Consumer<Void> stopWorkerConsumer) {
@@ -126,10 +126,10 @@ public class StreamAcknowledgementManager {
             final CheckpointStatus ackCheckpointStatus = ackStatus.get(String.format("%d-%d", commitNum, opNum));
             ackCheckpointStatus.setAcknowledgedTimestamp(Instant.now().toEpochMilli());
             if (result) {
-                ackCheckpointStatus.setAcknowledged(CheckpointStatus.AcknowledgmentStatus.POSITIVE_ACK);
+                ackCheckpointStatus.setAcknowledgeStatus(CheckpointStatus.AcknowledgmentStatus.POSITIVE_ACK);
                 LOG.debug("Received acknowledgment of completion from sink for checkpoint - commitNum {} and opNum {}", commitNum, opNum);
             } else {
-                ackCheckpointStatus.setAcknowledged(CheckpointStatus.AcknowledgmentStatus.NEGATIVE_ACK);
+                ackCheckpointStatus.setAcknowledgeStatus(CheckpointStatus.AcknowledgmentStatus.NEGATIVE_ACK);
                 LOG.warn("Negative acknowledgment received for checkpoint, resetting checkpoint- commitNum {} and opNum {}", commitNum, opNum);
                 // default CheckpointStatus acknowledged value is false. The monitorCheckpoints method will time out
                 // and reprocess stream from last successful checkpoint in the order.

@@ -1,7 +1,12 @@
 package org.opensearch.dataprepper.plugins.source.neptune.model;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import java.util.Map;
 
+@Setter
+@Getter
 public class StreamLoadStatus {
 
     private static final String EXPORT_END_TIMESTAMP = "exportEndTimestamp";
@@ -10,14 +15,6 @@ public class StreamLoadStatus {
 
     public StreamLoadStatus(long exportEndTimestamp) {
         this.exportEndTimestamp = exportEndTimestamp;
-    }
-
-    public void setExportEndTimestamp(long exportEndTimestamp) {
-        this.exportEndTimestamp = exportEndTimestamp;
-    }
-
-    public long getExportEndTimestamp() {
-        return exportEndTimestamp;
     }
 
     public Map<String, Object> toMap() {

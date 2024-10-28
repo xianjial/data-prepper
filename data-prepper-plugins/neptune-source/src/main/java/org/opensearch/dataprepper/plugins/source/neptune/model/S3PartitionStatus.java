@@ -1,8 +1,11 @@
 package org.opensearch.dataprepper.plugins.source.neptune.model;
 
+import lombok.Getter;
+
 import java.util.List;
 import java.util.Map;
 
+@Getter
 public class S3PartitionStatus {
 
     private static final String PARTITIONS = "partitions";
@@ -11,10 +14,6 @@ public class S3PartitionStatus {
 
     public S3PartitionStatus(final List<String> partitions) {
         this.partitions = partitions;
-    }
-
-    public List<String> getPartitions() {
-        return partitions;
     }
 
     public Map<String, Object> toMap() {

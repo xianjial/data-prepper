@@ -39,14 +39,14 @@ public class NeptuneSource implements Source<Record<Event>>, UsesEnhancedSourceC
 
     @DataPrepperPluginConstructor
     public NeptuneSource(final PluginMetrics pluginMetrics,
-                            final NeptuneSourceConfig sourceConfig,
-                            final AcknowledgementSetManager acknowledgementSetManager,
-                            final PluginConfigObservable pluginConfigObservable) {
+                         final NeptuneSourceConfig sourceConfig,
+                         final AcknowledgementSetManager acknowledgementSetManager,
+                         final PluginConfigObservable pluginConfigObservable) {
         this.pluginMetrics = pluginMetrics;
         this.sourceConfig = sourceConfig;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.pluginConfigObservable = pluginConfigObservable;
-        this.acknowledgementsEnabled = sourceConfig.isAcknowledgmentsEnabled();
+        this.acknowledgementsEnabled = sourceConfig.getAcknowledgments();
     }
 
     @Override

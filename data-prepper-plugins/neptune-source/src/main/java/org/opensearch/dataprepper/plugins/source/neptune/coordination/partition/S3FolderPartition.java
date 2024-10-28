@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.source.neptune.coordination.partition;
 
+import lombok.Getter;
+import lombok.Setter;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 
@@ -14,6 +16,8 @@ import java.util.Optional;
  * A S3 Folder partition represents an S3 partition job to create S3 path prefix/sub folder that will
  * be used to group records based on record key.
  */
+@Getter
+@Setter
 public class S3FolderPartition extends EnhancedSourcePartition<String> {
 
     public static final String PARTITION_TYPE = "S3_FOLDER";
@@ -37,7 +41,7 @@ public class S3FolderPartition extends EnhancedSourcePartition<String> {
         this.region = region;
         this.partitionCount = partitionCount;
     }
-    
+
     @Override
     public String getPartitionType() {
         return PARTITION_TYPE;
@@ -51,22 +55,5 @@ public class S3FolderPartition extends EnhancedSourcePartition<String> {
     @Override
     public Optional<String> getProgressState() {
         return Optional.empty();
-    }
-
-
-    public String getBucketName() {
-        return bucketName;
-    }
-
-    public String getPathPrefix() {
-        return pathPrefix;
-    }
-
-    public String getRegion() {
-        return region;
-    }
-
-    public int getPartitionCount() {
-        return partitionCount;
     }
 }

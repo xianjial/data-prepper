@@ -67,7 +67,7 @@ public class NeptuneDataClientWrapper {
         if (this.streamType == StreamType.PROPERTY_GRAPH) {
             final GetPropertygraphStreamResponse propertyGraphStream =
                     this.getPropertyGraphStream(checkPointCommitNum, checkPointOpNum, iteratorType);
-            records =  propertyGraphStream.records();
+            records = propertyGraphStream.records();
         } else {
             records = this.getSparqlStream(checkPointCommitNum, checkPointOpNum, iteratorType).records();
         }

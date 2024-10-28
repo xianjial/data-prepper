@@ -125,7 +125,7 @@ public class StreamWorker {
         this.lock = new ReentrantLock();
         // this.documentDBAggregateMetrics = documentDBAggregateMetrics;
 
-        if (sourceConfig.isAcknowledgmentsEnabled()) {
+        if (sourceConfig.getAcknowledgments()) {
             // starts acknowledgement monitoring thread
             streamAcknowledgementManager.init((Void) -> stop());
         }
@@ -167,7 +167,7 @@ public class StreamWorker {
         while (!Thread.currentThread().isInterrupted() && !stopWorker) {
             final List<NeptuneStreamRecord> streamRecords;
             try {
-               streamRecords = client.getStreamRecords(checkPointCommitNum, checkPointOpNum);
+                streamRecords = client.getStreamRecords(checkPointCommitNum, checkPointOpNum);
             } catch (StreamRecordsNotFoundException | InvalidParameterException exception) {
                 LOG.warn("The change stream cursor didn't return any document. Stopping the change stream. New thread should restart the stream.");
                 stop();
@@ -188,15 +188,15 @@ public class StreamWorker {
             // There is also a size limit of 10 MB on the response that can't be modified and that takes precedence over the number of
             // records specified in the limit parameter. The response does include a threshold-breaching record if the 10 MB limit was reached.
 
-            for (int i = 0; i < streamRecords.size(); i++) {
-                final Event event =  streamRecordConverter.convert(streamRecords.get(i));
+            for (NeptuneStreamRecord streamRecord : streamRecords) {
+                final Event event = streamRecordConverter.convert(streamRecord);
                 records.add(event);
                 // recordBytes.add(bytes);
                 lock.lock();
                 try {
                     recordCount += 1;
-                    checkPointCommitNum = streamRecords.get(i).getCommitNum();
-                    checkPointOpNum = streamRecords.get(i).getOpNum();
+                    checkPointCommitNum = streamRecord.getCommitNum();
+                    checkPointOpNum = streamRecord.getOpNum();
                     LOG.info("Process stream record - commitNum {}, opNum {}", checkPointCommitNum, checkPointOpNum);
 
                     if ((recordCount % recordFlushBatchSize == 0) || (System.currentTimeMillis() - lastBufferWriteTime >= bufferWriteIntervalInMs)) {
@@ -218,7 +218,7 @@ public class StreamWorker {
             writeToBuffer(records, checkPointCommitNum, checkPointOpNum, recordCount);
         }
         // Do final checkpoint.
-        if (!sourceConfig.isAcknowledgmentsEnabled()) {
+        if (!sourceConfig.getAcknowledgments()) {
             partitionCheckpoint.checkpoint(checkPointCommitNum, checkPointOpNum, recordCount);
         }
 
@@ -273,7 +273,7 @@ public class StreamWorker {
                 LOG.debug("Writing to buffer due to buffer write delay");
                 try {
                     writeToBuffer();
-                } catch(Exception e){
+                } catch (Exception e) {
                     // this will only happen if writing to buffer gets interrupted from shutdown,
                     // otherwise it's infinite backoff and retry
                     LOG.error("Failed to add records to buffer with error", e);
@@ -283,7 +283,7 @@ public class StreamWorker {
                 }
             }
 
-            if (!sourceConfig.isAcknowledgmentsEnabled()) {
+            if (!sourceConfig.getAcknowledgments()) {
                 if (System.currentTimeMillis() - lastCheckpointTime >= checkPointIntervalInMs) {
                     try {
                         lock.lock();
@@ -293,7 +293,7 @@ public class StreamWorker {
                         LOG.warn("Exception checkpointing the current state. The stream record processing will start from previous checkpoint.", e);
                         stop();
                     } finally {
-                        lock.unlock();;
+                        lock.unlock();
                     }
                     lastCheckpointTime = System.currentTimeMillis();
                 }

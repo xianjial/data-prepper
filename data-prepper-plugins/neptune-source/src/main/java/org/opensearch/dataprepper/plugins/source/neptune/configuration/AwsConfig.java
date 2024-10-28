@@ -7,11 +7,15 @@ package org.opensearch.dataprepper.plugins.source.neptune.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
 import software.amazon.awssdk.arns.Arn;
 
 import java.util.Map;
 import java.util.Optional;
 
+@Setter
+@Getter
 public class AwsConfig {
     private static final String AWS_IAM_ROLE = "role";
     private static final String AWS_IAM = "iam";
@@ -47,16 +51,5 @@ public class AwsConfig {
         }
     }
 
-    public String getAwsStsRoleArn() {
-        return awsStsRoleArn;
-    }
-
-    public String getAwsStsExternalId() {
-        return awsStsExternalId;
-    }
-
-    public Map<String, String> getAwsStsHeaderOverrides() {
-        return awsStsHeaderOverrides;
-    }
 }
 

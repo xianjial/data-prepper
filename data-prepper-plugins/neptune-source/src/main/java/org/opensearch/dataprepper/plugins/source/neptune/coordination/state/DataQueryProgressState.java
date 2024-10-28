@@ -6,10 +6,12 @@
 package org.opensearch.dataprepper.plugins.source.neptune.coordination.state;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Getter;
+import lombok.Setter;
 
+@Setter
+@Getter
 public class DataQueryProgressState {
-
-
     @JsonProperty("executedQueries")
     private long executedQueries;
 
@@ -19,27 +21,4 @@ public class DataQueryProgressState {
     @JsonProperty("exportStartTime")
     private long startTime;
 
-    public long getExecutedQueries() {
-        return executedQueries;
-    }
-
-    public long getLoadedRecords() {
-        return loadedRecords;
-    }
-
-    public void setExecutedQueries(long executedQueries) {
-        this.executedQueries = executedQueries;
-    }
-
-    public void setLoadedRecords(long loadedRecords) {
-        this.loadedRecords = loadedRecords;
-    }
-
-    public void setStartTime(long startTime) {
-        this.startTime = startTime;
-    }
-
-    public long getStartTime() {
-        return startTime;
-    }
 }

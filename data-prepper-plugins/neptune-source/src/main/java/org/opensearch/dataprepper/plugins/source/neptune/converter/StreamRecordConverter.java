@@ -111,6 +111,7 @@ public class StreamRecordConverter {
             return -1;
         }
     }
+
     private static int bytesToInt(byte[] bytes) {
         int result = 0;
         for (int i = 0; i < 4 && i < bytes.length; i++) {
