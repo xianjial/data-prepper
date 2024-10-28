@@ -10,11 +10,21 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.opensearch.dataprepper.plugins.processor.aggregate.*;
+import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateAction;
+import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionInput;
+import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionOutput;
+import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionResponse;
+import org.opensearch.dataprepper.plugins.processor.aggregate.GroupState;
 import org.opensearch.dataprepper.plugins.source.neptune.converter.OpenSearchDocument;
 import org.opensearch.dataprepper.plugins.source.neptune.converter.OpenSearchDocumentPredicate;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 /**
@@ -143,76 +153,76 @@ public class NeptuneAggregateAction implements AggregateAction {
 
         return events.values().stream().map(NeptuneEventAggregated::toEvent).collect(Collectors.toList());
     }
-}
-
-/**
- * Internal aggregate class for Neptune events
- */
-class NeptuneEventAggregated {
-    static final String EVENT_TYPE = "event";
-    static final String EVENT_KEY_ENTITY_ID = "entity_id";
-    static final String EVENT_KEY_ENTITY_TYPES_TO_ADD = "entity_types_to_add";
-    static final String EVENT_KEY_ENTITY_TYPES_TO_DELETE = "entity_types_to_delete";
-    static final String EVENT_KEY_PREDICATES_TO_ADD = "predicates_to_add";
-    static final String EVENT_KEY_PREDICATES_TO_DELETE = "predicates_to_delete";
-    static final String OP_TYPE_ADD = "ADD";
-    static final String OP_TYPE_DELETE = "DELETE";
-
-    public final String entityId;
-    public final HashSet<String> entityTypesToAdd = new HashSet<>();
-    public final HashSet<String> entityTypesToDelete = new HashSet<>();
-    public final List<HashMap<String, Object>> predicatesToAdd = new ArrayList<>();
-    public final List<HashMap<String, Object>> predicatesToDelete = new ArrayList<>();
-
-    public NeptuneEventAggregated(String entityId) {
-        this.entityId = entityId;
-    }
-
-    private ArrayList<HashMap<String, Object>> parsePredicates(Map<String, Set<OpenSearchDocumentPredicate>> predicates) {
-        ArrayList<HashMap<String, Object>> parsedPredicates = new ArrayList<>();
-
-        for (Map.Entry<String, Set<OpenSearchDocumentPredicate>> predicate : predicates.entrySet()) {
-            HashMap<String, Object> map = new HashMap();
-            map.put("key", predicate.getKey());
-            map.put("value", predicate.getValue());
-            parsedPredicates.add(map);
-        }
-        return parsedPredicates;
-    }
-
-    public void consumeOpenSearchDocument(OpenSearchDocument doc) {
-        if (!doc.getEntityType().isEmpty()) {
-            if (doc.getOp().equals(OP_TYPE_ADD)) {
-                this.entityTypesToAdd.addAll(doc.getEntityType());
-
-            } else if (doc.getOp().equals(OP_TYPE_DELETE)) {
-                this.entityTypesToDelete.addAll(doc.getEntityType());
-            }
-        }
-
-        if (!doc.getPredicates().isEmpty()) {
-            if (doc.getOp().equals(OP_TYPE_ADD)) {
-                this.predicatesToAdd.addAll(parsePredicates(doc.getPredicates()));
-
-            } else if (doc.getOp().equals(OP_TYPE_DELETE)) {
-                this.predicatesToDelete.addAll(parsePredicates(doc.getPredicates()));
-            }
-        }
-    }
 
     /**
-     * @return A JacksonEvent representation
+     * Internal aggregate class for Neptune events
      */
-    public Event toEvent() {
-        return JacksonEvent.builder()
-                .withEventType(EVENT_TYPE)
-                .withData(Map.ofEntries(
-                        Map.entry(EVENT_KEY_ENTITY_ID, this.entityId),
-                        Map.entry(EVENT_KEY_ENTITY_TYPES_TO_ADD, this.entityTypesToAdd),
-                        Map.entry(EVENT_KEY_ENTITY_TYPES_TO_DELETE, this.entityTypesToDelete),
-                        Map.entry(EVENT_KEY_PREDICATES_TO_ADD, this.predicatesToAdd),
-                        Map.entry(EVENT_KEY_PREDICATES_TO_DELETE, this.predicatesToDelete)
-                ))
-                .build();
+    static class NeptuneEventAggregated {
+        static final String EVENT_TYPE = "event";
+        static final String EVENT_KEY_ENTITY_ID = "entity_id";
+        static final String EVENT_KEY_ENTITY_TYPES_TO_ADD = "entity_types_to_add";
+        static final String EVENT_KEY_ENTITY_TYPES_TO_DELETE = "entity_types_to_delete";
+        static final String EVENT_KEY_PREDICATES_TO_ADD = "predicates_to_add";
+        static final String EVENT_KEY_PREDICATES_TO_DELETE = "predicates_to_delete";
+        static final String OP_TYPE_ADD = "ADD";
+        static final String OP_TYPE_REMOVE = "REMOVE";
+
+        public final String entityId;
+        public final HashSet<String> entityTypesToAdd = new HashSet<>();
+        public final HashSet<String> entityTypesToDelete = new HashSet<>();
+        public final List<HashMap<String, Object>> predicatesToAdd = new ArrayList<>();
+        public final List<HashMap<String, Object>> predicatesToDelete = new ArrayList<>();
+
+        public NeptuneEventAggregated(String entityId) {
+            this.entityId = entityId;
+        }
+
+        private ArrayList<HashMap<String, Object>> parsePredicates(Map<String, Set<OpenSearchDocumentPredicate>> predicates) {
+            ArrayList<HashMap<String, Object>> parsedPredicates = new ArrayList<>();
+
+            for (Map.Entry<String, Set<OpenSearchDocumentPredicate>> predicate : predicates.entrySet()) {
+                HashMap<String, Object> map = new HashMap();
+                map.put("key", predicate.getKey());
+                map.put("value", predicate.getValue());
+                parsedPredicates.add(map);
+            }
+            return parsedPredicates;
+        }
+
+        public void consumeOpenSearchDocument(OpenSearchDocument doc) {
+            if (!doc.getEntityType().isEmpty()) {
+                if (doc.getOp().equals(OP_TYPE_ADD)) {
+                    this.entityTypesToAdd.addAll(doc.getEntityType());
+
+                } else if (doc.getOp().equals(OP_TYPE_REMOVE)) {
+                    this.entityTypesToDelete.addAll(doc.getEntityType());
+                }
+            }
+
+            if (!doc.getPredicates().isEmpty()) {
+                if (doc.getOp().equals(OP_TYPE_ADD)) {
+                    this.predicatesToAdd.addAll(parsePredicates(doc.getPredicates()));
+
+                } else if (doc.getOp().equals(OP_TYPE_REMOVE)) {
+                    this.predicatesToDelete.addAll(parsePredicates(doc.getPredicates()));
+                }
+            }
+        }
+
+        /**
+         * @return A JacksonEvent representation
+         */
+        public Event toEvent() {
+            return JacksonEvent.builder()
+                    .withEventType(EVENT_TYPE)
+                    .withData(Map.ofEntries(
+                            Map.entry(EVENT_KEY_ENTITY_ID, this.entityId),
+                            Map.entry(EVENT_KEY_ENTITY_TYPES_TO_ADD, this.entityTypesToAdd),
+                            Map.entry(EVENT_KEY_ENTITY_TYPES_TO_DELETE, this.entityTypesToDelete),
+                            Map.entry(EVENT_KEY_PREDICATES_TO_ADD, this.predicatesToAdd),
+                            Map.entry(EVENT_KEY_PREDICATES_TO_DELETE, this.predicatesToDelete)
+                    ))
+                    .build();
+        }
     }
 }
