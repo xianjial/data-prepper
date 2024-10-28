@@ -10,9 +10,12 @@ import org.opensearch.dataprepper.plugins.source.neptune.stream.model.NeptuneStr
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.neptunedata.NeptunedataClient;
-import software.amazon.awssdk.services.neptunedata.model.*;
+import software.amazon.awssdk.services.neptunedata.model.GetPropertygraphStreamRequest;
+import software.amazon.awssdk.services.neptunedata.model.GetPropertygraphStreamResponse;
+import software.amazon.awssdk.services.neptunedata.model.GetSparqlStreamRequest;
+import software.amazon.awssdk.services.neptunedata.model.GetSparqlStreamResponse;
+import software.amazon.awssdk.services.neptunedata.model.IteratorType;
 
-import java.lang.IllegalArgumentException;
 import java.util.List;
 import java.util.stream.Collectors;
 
