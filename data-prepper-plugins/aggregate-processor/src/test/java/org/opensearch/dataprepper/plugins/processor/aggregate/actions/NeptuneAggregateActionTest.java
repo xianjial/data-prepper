@@ -16,9 +16,16 @@ import org.opensearch.dataprepper.plugins.processor.aggregate.*;
 import org.opensearch.dataprepper.plugins.source.neptune.converter.OpenSearchDocument;
 import org.opensearch.dataprepper.plugins.source.neptune.converter.OpenSearchDocumentPredicate;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 
 public class NeptuneAggregateActionTest {
     private AggregateAction neptuneAggregateAction;
@@ -63,7 +70,7 @@ public class NeptuneAggregateActionTest {
                 .withEventType("event")
                 .withData(OpenSearchDocument
                         .builder()
-                        .op("DELETE")
+                        .op("REMOVE")
                         .commitNum(1L)
                         .opNum(3L)
                         .entityId("v://22c94d6b-f537-62f6-6407-f85fd4b59629")
@@ -77,7 +84,7 @@ public class NeptuneAggregateActionTest {
                 .withEventType("event")
                 .withData(OpenSearchDocument
                         .builder()
-                        .op("DELETE")
+                        .op("REMOVE")
                         .commitNum(2L)
                         .opNum(1L)
                         .entityId("v://22c94d6b-f537-62f6-6407-f85fd4b59629")
