@@ -130,7 +130,7 @@ public class NeptuneAggregateAction implements AggregateAction {
      * Retrieves the aggregated events. Used for the conclude action
      */
     private List<Event> getAggregatedEvents(TreeMap<Long, TreeMap<Long, OpenSearchDocument>> eventsMap) {
-        final HashMap<String,NeptuneEventAggregated> events = new HashMap<>();
+        final HashMap<String, NeptuneEventAggregated> events = new HashMap<>();
 
         assertSequence(new ArrayList<>(eventsMap.keySet()));
 
@@ -181,7 +181,7 @@ public class NeptuneAggregateAction implements AggregateAction {
             ArrayList<HashMap<String, Object>> parsedPredicates = new ArrayList<>();
 
             for (Map.Entry<String, Set<OpenSearchDocumentPredicate>> predicate : predicates.entrySet()) {
-                HashMap<String, Object> map = new HashMap();
+                HashMap<String, Object> map = new HashMap<>();
                 map.put("key", predicate.getKey());
                 map.put("value", predicate.getValue());
                 parsedPredicates.add(map);
