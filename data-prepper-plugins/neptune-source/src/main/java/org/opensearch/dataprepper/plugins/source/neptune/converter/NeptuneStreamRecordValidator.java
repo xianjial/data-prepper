@@ -11,7 +11,6 @@
 
 package org.opensearch.dataprepper.plugins.source.neptune.converter;
 
-import com.google.common.collect.ImmutableSet;
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.Literal;
 import org.eclipse.rdf4j.model.Statement;
@@ -26,8 +25,6 @@ import software.amazon.awssdk.services.neptunedata.model.PropertygraphData;
 import software.amazon.awssdk.services.neptunedata.model.SparqlData;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.HashSet;
 
 
 /**
@@ -39,11 +36,6 @@ import java.util.HashSet;
 public class NeptuneStreamRecordValidator {
     private static final Logger LOG = LoggerFactory.getLogger(NeptuneStreamRecordValidator.class);
     private final boolean allowNonStringDatatypes;
-
-    private static final ImmutableSet<String> PG_ALLOWED_DATATYPES = ImmutableSet.of("string", "date", "bool", "byte", "short", "int", "long", "float", "double");
-    private static final ImmutableSet<String> RDF_ALLOWED_DATATYPES = ImmutableSet.of(
-
-    );
 
     public NeptuneStreamRecordValidator(final boolean allowNonStringDatatypes) {
         this.allowNonStringDatatypes = allowNonStringDatatypes;
